@@ -1,0 +1,78 @@
+name: deploy-cloudrun
+
+# Auto-deploys to Google Cloud Run on every push to main.
+# Requires the following GitHub repo secrets (one-time setup, see DEPLOY.md):
+#   GCP_PROJECT_ID                  - your GCP project id (e.g. mosaicmind-rag)
+#   GCP_WORKLOAD_IDENTITY_PROVIDER  - projects/<NUM>/locations/global/workloadIdentityPools/<POOL>/providers/<PROVIDER>
+#   GCP_SERVICE_ACCOUNT             - the SA email allowed to impersonate from GH (e.g. gh-deployer@<PROJECT>.iam.gserviceaccount.com)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloudrun
+  cancel-in-progress: true
+
+env:
+  REGION: us-central1
+  REPO: mosaicmind
+  SERVICE: mosaicmind
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # required for keyless Workload Identity Federation
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: Authenticate to Google Cloud (Workload Identity)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Configure docker for Artifact Registry
+        run: gcloud auth configure-docker $REGION-docker.pkg.dev --quiet
+
+      - name: Build & push image
+        run: |
+          IMAGE="$REGION-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$REPO/$SERVICE:${GITHUB_SHA::7}"
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --image="$IMAGE" \
+            --region="$REGION" \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=8080 \
+            --cpu=2 \
+            --memory=4Gi \
+            --timeout=300 \
+            --concurrency=10 \
+            --min-instances=0 \
+            --max-instances=3 \
+            --no-cpu-throttling \
+            --set-env-vars="MOSAIC_DATA_DIR=/app/data,MOSAIC_UPLOAD_DIR=/app/data/uploads,MOSAIC_INDEX_DIR=/app/data/index,MOSAIC_CHROMA_DIR=/app/data/chroma,MLFLOW_TRACKING_URI=/app/data/mlruns" \
+            --update-secrets="GOOGLE_API_KEY=mosaicmind-google-api-key:latest,GROQ_API_KEY=mosaicmind-groq-api-key:latest"
+
+      - name: Print URL
+        run: |
+          URL=$(gcloud run services describe "$SERVICE" --region="$REGION" --format='value(status.url)')
+          echo "## Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: $URL" >> $GITHUB_STEP_SUMMARY
+          echo "- Health: $URL/healthz" >> $GITHUB_STEP_SUMMARY
+          echo "- Docs: $URL/docs" >> $GITHUB_STEP_SUMMARY

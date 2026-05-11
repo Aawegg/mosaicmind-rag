@@ -1,7 +1,12 @@
 # MosaicMind
 
 > Multimodal RAG assistant. Drop PDFs, images, audio, or video. Ask anything. Get cited answers.
-> Built with **FastAPI + LangGraph + LlamaIndex + Chroma**, powered by **Gemini 3.x + Groq Whisper**, tracked with **MLflow**, orchestrated by **Airflow**, shipped via **Docker** + **GitHub Actions**.
+> Built with **FastAPI + LangGraph + LlamaIndex + Chroma**, powered by **Gemini 3.x + Groq Whisper**, tracked with **MLflow**, orchestrated by **Airflow**, shipped via **Docker** + **GitHub Actions** to **Google Cloud Run**.
+
+[![ci](https://github.com/Aawegg/mosaicmind-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/Aawegg/mosaicmind-rag/actions/workflows/ci.yml)
+[![deploy](https://github.com/Aawegg/mosaicmind-rag/actions/workflows/deploy-cloudrun.yml/badge.svg)](https://github.com/Aawegg/mosaicmind-rag/actions/workflows/deploy-cloudrun.yml)
+
+> **Live demo:** _add the Cloud Run URL here after running `bash scripts/deploy_cloudrun.sh` (see [DEPLOY.md](./DEPLOY.md))._
 
 ---
 
