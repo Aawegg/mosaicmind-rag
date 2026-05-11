@@ -13,10 +13,23 @@ class IngestResponse(BaseModel):
     summary: str = ""
 
 
+class ChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
+
 class QueryRequest(BaseModel):
     question: str = Field(min_length=1)
     top_k: int = 6
     use_images: bool | None = None
+    history: list[ChatMessage] = Field(default_factory=list)
+
+
+class ClearCorpusResponse(BaseModel):
+    ok: bool = True
+    text_deleted: int = 0
+    image_deleted: int = 0
+    files_deleted: int = 0
 
 
 class CitationOut(BaseModel):

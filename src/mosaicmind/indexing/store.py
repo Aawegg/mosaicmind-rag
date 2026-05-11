@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import chromadb
+import numpy as np
 from chromadb.config import Settings as ChromaSettings
 from chromadb.utils.embedding_functions.sentence_transformer_embedding_function import (
     SentenceTransformerEmbeddingFunction,
@@ -94,27 +95,31 @@ def _to_documents(result: IngestResult) -> list[Document]:
 
 
 def _add_images_to_clip(result: IngestResult) -> int:
-    """Push image-modality chunks into the CLIP-backed Chroma collection."""
+    """Push image-modality chunks into the CLIP-backed Chroma collection.
+
+    Chroma 0.6+ requires numpy arrays (HxWx3 uint8), so we convert PIL -> ndarray.
+    The CLIP embedding function accepts ndarrays and re-converts internally.
+    """
     coll = _image_collection()
     ids: list[str] = []
-    embeds_input: list[Any] = []  # PIL Image objects
+    embeds_input: list[np.ndarray] = []
     metas: list[dict[str, Any]] = []
     for c in result.chunks:
         if c.modality != "image":
             continue
         try:
             img = Image.open(c.content).convert("RGB")
+            arr = np.asarray(img, dtype=np.uint8)
         except Exception as e:  # noqa: BLE001
             logger.warning(f"[index] skip image {c.content}: {e}")
             continue
         ids.append(c.chunk_id)
-        embeds_input.append(img)
+        embeds_input.append(arr)
         metas.append({**c.metadata, "doc_id": c.doc_id, "chunk_id": c.chunk_id, "path": c.content})
 
     if not ids:
         return 0
 
-    # SentenceTransformer's CLIP wrapper accepts PIL images via its embed function.
     coll.add(ids=ids, images=embeds_input, metadatas=metas)
     return len(ids)
 
@@ -155,6 +160,60 @@ def retrieve_text(query: str, top_k: int = 6) -> list[Hit]:
         Hit(text=n.get_content(), score=float(n.score or 0.0), metadata=dict(n.metadata or {}))
         for n in nodes
     ]
+
+
+def clear_all(also_delete_uploads: bool = True) -> dict[str, int]:
+    """Wipe both Chroma collections (and optionally the upload dir).
+
+    Drops every collection, recreates them empty, and busts the cached
+    LlamaIndex/Chroma handles so the next call rebuilds against the empty
+    store.  Returns counts of removed items.
+    """
+    import shutil
+
+    settings = get_settings()
+    client = _chroma_client()
+
+    text_count = 0
+    image_count = 0
+    try:
+        text_count = client.get_or_create_collection(TEXT_COLLECTION).count()
+        image_count = client.get_or_create_collection(IMAGE_COLLECTION).count()
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[index] count before clear failed: {e}")
+
+    for name in (TEXT_COLLECTION, IMAGE_COLLECTION):
+        try:
+            client.delete_collection(name)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[index] delete {name} failed: {e}")
+
+    files_deleted = 0
+    if also_delete_uploads and settings.upload_dir.exists():
+        for p in settings.upload_dir.rglob("*"):
+            if p.is_file():
+                try:
+                    p.unlink()
+                    files_deleted += 1
+                except OSError:
+                    pass
+        for d in sorted(settings.upload_dir.rglob("*"), reverse=True):
+            if d.is_dir():
+                try:
+                    shutil.rmtree(d)
+                except OSError:
+                    pass
+        settings.upload_dir.mkdir(parents=True, exist_ok=True)
+
+    # Bust cached handles so the next request gets fresh empty collections.
+    _text_index.cache_clear()
+    _image_collection.cache_clear()
+    get_text_store.cache_clear()
+
+    logger.info(
+        f"[index] cleared: text={text_count} image={image_count} files={files_deleted}"
+    )
+    return {"text": text_count, "image": image_count, "files": files_deleted}
 
 
 def retrieve_images(query: str, top_k: int = 4) -> list[Hit]:

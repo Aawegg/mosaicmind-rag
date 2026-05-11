@@ -244,3 +244,77 @@ def answer(question: str) -> AgentResult:
         trace=final.get("trace", []),
         plan=final.get("plan", {}),
     )
+
+
+# ---------------------------- streaming -----------------------------------
+
+
+async def stream_answer(question: str, history: list[dict] | None = None):
+    """Async generator that yields SSE-style events.
+
+    Plan + retrieve happen synchronously (they're fast); only the final
+    synthesis is streamed token-by-token to the client.
+
+    Each yielded item is a dict with keys 'event' and 'data'.  The route
+    layer converts these into `event: …\\ndata: …\\n\\n` SSE frames.
+    """
+    settings = get_settings()
+    state: GraphState = {"question": question, "loops": 0, "trace": []}
+
+    # 1. Plan -------------------------------------------------------------
+    yield {"event": "status", "data": "Planning…"}
+    state = plan_node(state)
+    yield {"event": "plan", "data": state.get("plan", {})}
+
+    # 2. Retrieve ---------------------------------------------------------
+    yield {"event": "status", "data": "Searching corpus…"}
+    state = retrieve_node(state)
+    context, citations = _build_context(state)
+    yield {
+        "event": "citations",
+        "data": [c.__dict__ for c in citations],
+    }
+
+    # 3. Stream the synthesis --------------------------------------------
+    yield {"event": "status", "data": "Synthesizing…"}
+    llm = gemini_chat_model(model=settings.heavy_model, temperature=0.2)
+
+    history_blob = ""
+    if history:
+        rendered = []
+        # Keep only the last 6 turns to bound prompt size.
+        for turn in history[-6:]:
+            role = turn.get("role", "user").upper()
+            content = (turn.get("content") or "").strip()
+            if content:
+                rendered.append(f"[{role}] {content}")
+        if rendered:
+            history_blob = "Conversation so far:\n" + "\n".join(rendered) + "\n\n"
+
+    user_msg = (
+        f"{history_blob}Current question: {question}\n\n"
+        f"Context:\n{context}"
+    )
+    messages = [
+        SystemMessage(content=SYNTHESIZER_SYSTEM),
+        HumanMessage(content=user_msg),
+    ]
+
+    full_text: list[str] = []
+    try:
+        async for chunk in llm.astream(messages):
+            piece = _msg_text(chunk)
+            if piece:
+                full_text.append(piece)
+                yield {"event": "token", "data": piece}
+    except Exception as e:  # noqa: BLE001
+        yield {"event": "error", "data": str(e)}
+        return
+
+    yield {
+        "event": "done",
+        "data": {
+            "answer": "".join(full_text),
+            "n_citations": len(citations),
+        },
+    }

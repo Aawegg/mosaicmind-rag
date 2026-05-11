@@ -10,8 +10,8 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from mosaicmind import __version__
+from mosaicmind.api.routes import corpus, health, ingest, query
 from mosaicmind.api.routes import eval as eval_routes
-from mosaicmind.api.routes import health, ingest, query
 from mosaicmind.config import get_settings
 from mosaicmind.mlops.tracking import init_mlflow
 from mosaicmind.utils.logging import logger, setup_logging
@@ -47,6 +47,7 @@ app.include_router(health.router)
 app.include_router(ingest.router)
 app.include_router(query.router)
 app.include_router(eval_routes.router)
+app.include_router(corpus.router)
 
 # Serve the chat UI: GET / returns index.html, /static/* serves assets.
 if STATIC_DIR.exists():
