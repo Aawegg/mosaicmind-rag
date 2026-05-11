@@ -6,7 +6,7 @@ colorTo: indigo
 sdk: docker
 app_port: 7860
 pinned: false
-short_description: Multimodal RAG on Gemini 3.x + LangGraph + LlamaIndex + FastAPI
+short_description: Multimodal RAG on Gemini 3.x + LangGraph + LlamaIndex
 ---
 
 # MosaicMind
