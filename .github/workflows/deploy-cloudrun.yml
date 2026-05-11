@@ -23,6 +23,9 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Skip until you've set up Workload Identity Federation per DEPLOY.md.
+    # Once the three GCP_* secrets exist, this job runs on every push to main.
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     permissions:
       contents: read
       id-token: write   # required for keyless Workload Identity Federation

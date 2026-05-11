@@ -170,12 +170,16 @@ echo "GCP_SERVICE_ACCOUNT = gh-deployer@${PROJECT_ID}.iam.gserviceaccount.com"
 echo "GCP_PROJECT_ID = $PROJECT_ID"
 ```
 
-### 3. Drop those three values into GitHub repo secrets
+### 3. Drop those three values into GitHub repo secrets, then enable the workflow
 
 ```bash
 gh secret set GCP_PROJECT_ID --body "$PROJECT_ID"
 gh secret set GCP_SERVICE_ACCOUNT --body "gh-deployer@${PROJECT_ID}.iam.gserviceaccount.com"
 gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --body "$WIP"
+
+# The deploy workflow is gated on this repo variable so it doesn't fail on every
+# push before the secrets exist.  Flip it on once the three secrets above are set:
+gh variable set DEPLOY_ENABLED --body "true"
 ```
 
 ### 4. Push and watch it deploy
