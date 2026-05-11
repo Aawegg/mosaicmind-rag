@@ -1,0 +1,17 @@
+[
+  {
+    "question": "What is the main topic of the indexed corpus?",
+    "reference": "",
+    "notes": "Open-ended; checks the agent gives a calibrated answer."
+  },
+  {
+    "question": "Summarize the most-cited document in 5 bullet points.",
+    "reference": "",
+    "notes": "Tests retrieval coverage."
+  },
+  {
+    "question": "Show me images that contain charts or diagrams.",
+    "reference": "",
+    "notes": "Tests image search path (use_images should be true)."
+  }
+]

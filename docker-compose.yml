@@ -1,0 +1,49 @@
+services:
+  api:
+    build: .
+    image: mosaicmind:latest
+    container_name: mosaicmind-api
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - mlflow
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.16.2
+    container_name: mosaicmind-mlflow
+    command: >
+      mlflow server
+        --host 0.0.0.0
+        --port 5000
+        --backend-store-uri sqlite:////mlflow/mlflow.db
+        --default-artifact-root /mlflow/artifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data/mlflow:/mlflow
+    restart: unless-stopped
+
+  # Optional Airflow stack (heavy). Bring up with: docker compose --profile orchestration up
+  airflow:
+    profiles: ["orchestration"]
+    image: apache/airflow:2.10.2-python3.11
+    container_name: mosaicmind-airflow
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./data/airflow:/opt/airflow
+    command: >
+      bash -c "airflow db migrate &&
+               airflow users create --username admin --password admin --firstname a --lastname b --role Admin --email a@b.com || true &&
+               airflow standalone"

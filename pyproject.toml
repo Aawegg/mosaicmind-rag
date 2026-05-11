@@ -1,0 +1,95 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mosaicmind"
+version = "0.1.0"
+description = "Multimodal RAG: PDFs, images, audio, video -> cited answers via LangGraph + LlamaIndex on Gemini 3.x + Groq."
+authors = [{ name = "Aaweg Bhaladhare" }]
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "MIT" }
+
+dependencies = [
+  # API
+  "fastapi>=0.115,<2.0",
+  "uvicorn[standard]>=0.32,<1.0",
+  "python-multipart>=0.0.12",
+  "pydantic>=2.7,<3.0",
+  "pydantic-settings>=2.4,<3.0",
+  "httpx>=0.27,<1.0",
+
+  # LLM SDKs
+  "google-genai>=1.0,<3.0",
+  "groq>=0.11,<1.0",
+  # OpenAI SDK kept for the optional Gemini OpenAI-compat escape hatch.
+  "openai>=1.55,<2.0",
+
+  # LangChain + LangGraph (1.x line — required by langchain-google-genai 4.x)
+  "langchain>=1.0,<2.0",
+  "langchain-core>=1.0,<2.0",
+  "langchain-google-genai>=4.0,<5.0",
+  "langchain-groq>=1.0,<2.0",
+  "langgraph>=1.0,<2.0",
+
+  # LlamaIndex (0.14.x has the google-genai integrations)
+  "llama-index>=0.14.5,<0.15",
+  "llama-index-core>=0.14.5,<0.15",
+  "llama-index-llms-google-genai>=0.9,<1.0",
+  "llama-index-embeddings-google-genai>=0.5,<1.0",
+  "llama-index-vector-stores-chroma>=0.5,<1.0",
+  "llama-index-readers-file>=0.5,<1.0",
+
+  # Vector store + image embeddings (CLIP runs locally via sentence-transformers)
+  "chromadb>=0.5,<1.0",
+  "sentence-transformers>=3.0,<5.0",
+
+  # Multimodal ingestion
+  "pymupdf>=1.24,<2.0",
+  "pillow>=10.0,<13.0",
+  "ffmpeg-python>=0.2.0",
+  "opencv-python-headless>=4.10,<5.0",
+
+  # MLOps
+  "mlflow>=2.16,<4.0",
+
+  # Utils
+  "loguru>=0.7,<1.0",
+  "tenacity>=9.0,<10.0",
+  "rich>=13.0,<15.0",
+  "tqdm>=4.66,<5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9.0",
+  "pytest-asyncio>=0.24,<1.0",
+  "ruff>=0.6,<1.0",
+  "mypy>=1.11,<2.0",
+]
+airflow = [
+  "apache-airflow>=2.10,<3.0",
+]
+aws = [
+  "boto3>=1.35,<2.0",
+]
+
+[project.scripts]
+mosaicmind = "mosaicmind.api.main:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra -q"

@@ -1,0 +1,14 @@
+[
+  {
+    "question": "Summarize the key findings of the uploaded report.",
+    "expected_keywords": ["finding", "result"]
+  },
+  {
+    "question": "What does the chart on page 3 show?",
+    "expected_keywords": ["chart", "page"]
+  },
+  {
+    "question": "Who is the speaker in the meeting recording and what was decided?",
+    "expected_keywords": ["decided", "agree"]
+  }
+]
