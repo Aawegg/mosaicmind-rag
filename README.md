@@ -1,12 +1,23 @@
+---
+title: MosaicMind
+emoji: 🧠
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+short_description: Multimodal RAG on Gemini 3.x + LangGraph + LlamaIndex + FastAPI
+---
+
 # MosaicMind
 
 > Multimodal RAG assistant. Drop PDFs, images, audio, or video. Ask anything. Get cited answers.
-> Built with **FastAPI + LangGraph + LlamaIndex + Chroma**, powered by **Gemini 3.x + Groq Whisper**, tracked with **MLflow**, orchestrated by **Airflow**, shipped via **Docker** + **GitHub Actions** to **Google Cloud Run**.
+> Built with **FastAPI + LangGraph + LlamaIndex + Chroma**, powered by **Gemini 3.x + Groq Whisper**, tracked with **MLflow**, orchestrated by **Airflow**, shipped via **Docker** + **GitHub Actions** to **Hugging Face Spaces** (free) or **Google Cloud Run**.
 
 [![ci](https://github.com/Aawegg/mosaicmind-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/Aawegg/mosaicmind-rag/actions/workflows/ci.yml)
-[![deploy](https://github.com/Aawegg/mosaicmind-rag/actions/workflows/deploy-cloudrun.yml/badge.svg)](https://github.com/Aawegg/mosaicmind-rag/actions/workflows/deploy-cloudrun.yml)
+[![hf-space](https://img.shields.io/badge/%F0%9F%A4%97%20Space-Aawegg%2Fmosaicmind-yellow)](https://huggingface.co/spaces/Aawegg/mosaicmind)
 
-> **Live demo:** _add the Cloud Run URL here after running `bash scripts/deploy_cloudrun.sh` (see [DEPLOY.md](./DEPLOY.md))._
+> **Live demo:** https://huggingface.co/spaces/Aawegg/mosaicmind _(URL active after `bash scripts/deploy_hf_space.sh`; see [DEPLOY.md](./DEPLOY.md))._
 
 ---
 

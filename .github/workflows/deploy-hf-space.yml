@@ -1,0 +1,47 @@
+name: deploy-hf-space
+
+# Auto-mirrors the repo to the Hugging Face Space on every push to main.
+# Requires two GitHub repo secrets (one-time, see DEPLOY.md):
+#   HF_TOKEN     - a write token from https://huggingface.co/settings/tokens
+#   HF_USERNAME  - your HF username (e.g. Aawegg)
+#
+# Optional repo variable:
+#   DEPLOY_HF_ENABLED = "true"   (set to opt in; defaults to off)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-hf-space
+  cancel-in-progress: true
+
+jobs:
+  push-to-hf:
+    runs-on: ubuntu-latest
+    if: ${{ vars.DEPLOY_HF_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_USERNAME: ${{ secrets.HF_USERNAME }}
+          SPACE_NAME: mosaicmind
+        run: |
+          git config user.email "ci@github"
+          git config user.name "GitHub Actions"
+          git remote add hf "https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/spaces/${HF_USERNAME}/${SPACE_NAME}"
+          git push hf HEAD:main --force
+
+      - name: Print URL
+        env:
+          HF_USERNAME: ${{ secrets.HF_USERNAME }}
+          SPACE_NAME: mosaicmind
+        run: |
+          echo "## Mirrored to HF Space" >> $GITHUB_STEP_SUMMARY
+          echo "- Space: https://huggingface.co/spaces/${HF_USERNAME}/${SPACE_NAME}" >> $GITHUB_STEP_SUMMARY
+          echo "- API:   https://${HF_USERNAME}-${SPACE_NAME}.hf.space" >> $GITHUB_STEP_SUMMARY

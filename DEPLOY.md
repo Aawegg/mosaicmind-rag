@@ -1,9 +1,71 @@
-# Deploying MosaicMind to Google Cloud Run
+# Deploying MosaicMind
 
-Two paths:
+Three deploy targets, pick one:
 
-- **Path A — One-shot manual deploy** (`scripts/deploy_cloudrun.sh`). Easiest.
-- **Path B — GitOps via GitHub Actions** (`deploy-cloudrun.yml`). Auto-deploys on every push to `main`.
+- **🆓 Hugging Face Spaces** — free, no billing, public URL in ~5 min. **Recommended for portfolio demos.**
+- **Google Cloud Run** — free tier with billing on file, scales to zero, fastest cold starts on Gemini.
+- **GitHub Actions GitOps** — sits on top of either of the two above; auto-deploys on every push to `main`.
+
+---
+
+# 🆓 Path 0 — Hugging Face Spaces (free, no billing)
+
+This is the **fastest free path**. You only need:
+- A free Hugging Face account at [huggingface.co/join](https://huggingface.co/join).
+- A **write** token from [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens).
+- Your existing Gemini key (already in `.env`).
+
+## Manual deploy
+
+```bash
+export HF_USERNAME=your_hf_username      # NOT email
+export HF_TOKEN=hf_xxxxxxxxxxxxxxxxxx    # write token
+bash scripts/deploy_hf_space.sh
+```
+
+That script will:
+1. Create the Space `https://huggingface.co/spaces/<HF_USERNAME>/mosaicmind` (Docker SDK).
+2. Set `GOOGLE_API_KEY` (and `GROQ_API_KEY` if present) as Space **Secrets**.
+3. Set the `MOSAIC_*` model-routing values as Space **Variables**.
+4. Push the current branch to the Space's git remote — HF auto-builds the Dockerfile.
+5. Print the live URLs.
+
+First build takes ~5-10 min. Watch progress at the printed Space URL. Once it's "Running", hit:
+
+```bash
+curl https://<HF_USERNAME>-mosaicmind.hf.space/healthz
+```
+
+## GitOps auto-mirror (optional)
+
+After the first manual deploy works, set up the GitHub Action to mirror every push:
+
+```bash
+gh secret set HF_TOKEN    --body "$HF_TOKEN"
+gh secret set HF_USERNAME --body "$HF_USERNAME"
+gh variable set DEPLOY_HF_ENABLED --body "true"
+```
+
+From then on, every push to `main` triggers `.github/workflows/deploy-hf-space.yml` which mirrors the repo to the Space.
+
+## Free-tier limits & caveats
+
+| Aspect | Free tier | Mitigation |
+|---|---|---|
+| RAM | 16 GB | Plenty for this app (~3-4 GB used) |
+| CPU | 2 vCPU | Inference is dominated by Gemini API latency anyway |
+| Disk | Ephemeral | Chroma index + uploads are wiped on Space restart. Re-ingest on reload, or upgrade to a paid Space with persistent `/data`. |
+| Sleep | Spaces sleep after ~48h of inactivity | First request after sleep takes ~30s to wake up |
+| Cold start | First boot downloads CLIP + builds image (~5-10 min) | Pre-cached in Dockerfile, subsequent boots ~30s |
+
+---
+
+# Path 1 — Google Cloud Run (paid, but free tier inside)
+
+Two sub-paths:
+
+- **A — One-shot manual deploy** (`scripts/deploy_cloudrun.sh`). Easiest.
+- **B — GitOps via GitHub Actions** (`deploy-cloudrun.yml`). Auto-deploys on every push to `main`.
 
 Pick A first, then layer B on top once you're happy.
 

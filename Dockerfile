@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     HF_HOME=/app/.hf_cache \
     SENTENCE_TRANSFORMERS_HOME=/app/.hf_cache \
-    PORT=8080
+    PORT=7860
 
 # ffmpeg = audio/video ingestion. libgl/glib = opencv-headless transitive deps.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -17,21 +17,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
  && rm -rf /var/lib/apt/lists/*
 
+# Hugging Face Spaces runs containers as a non-root user (UID 1000).
+# This UID/GID is also fine for Cloud Run / generic hosts.
+RUN useradd -m -u 1000 appuser
 WORKDIR /app
+RUN chown -R appuser:appuser /app
+USER appuser
+ENV PATH="/home/appuser/.local/bin:${PATH}"
 
-COPY pyproject.toml README.md ./
-COPY src ./src
+COPY --chown=appuser:appuser pyproject.toml README.md ./
+COPY --chown=appuser:appuser src ./src
 
-RUN pip install --upgrade pip && pip install -e .
+RUN pip install --user --upgrade pip && pip install --user -e .
 
-# Pre-download the CLIP model so cold starts don't pay for it.
-# (Cloud Run cold start is dominated by image pull + first model load.)
+# Pre-download CLIP weights so the first request doesn't pay the download cost.
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('clip-ViT-B-32')"
 
-EXPOSE 8080
+# Make sure the app's data dirs exist & are writable by appuser.
+RUN mkdir -p /app/data/uploads /app/data/index /app/data/chroma /app/data/mlruns
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+EXPOSE 7860
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD curl -fsS "http://localhost:${PORT}/healthz" || exit 1
 
-# Cloud Run injects $PORT (defaults to 8080).  uvicorn must bind to 0.0.0.0:$PORT.
+# $PORT is honored by both Cloud Run (8080) and HF Spaces (7860).
 CMD ["sh", "-c", "uvicorn mosaicmind.api.main:app --host 0.0.0.0 --port ${PORT}"]
