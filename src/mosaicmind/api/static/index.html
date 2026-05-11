@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>MosaicMind — Multimodal RAG</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E" />
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --panel: #11141b;
+    --panel-2: #161a23;
+    --border: #1f2430;
+    --text: #e6e8ef;
+    --muted: #8a92a6;
+    --accent: #7c5cff;
+    --accent-2: #2dd4bf;
+    --user: #2a3147;
+    --assistant: #161a23;
+    --danger: #ff6b6b;
+    --ok: #4ade80;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ---------- header ---------- */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(124,92,255,.08), transparent);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .logo {
+    width: 32px; height: 32px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-radius: 8px;
+    font-size: 18px;
+  }
+  .brand h1 { font-size: 17px; margin: 0; font-weight: 650; letter-spacing: .2px; }
+  .brand .sub { font-size: 12px; color: var(--muted); }
+  .actions { display: flex; gap: 14px; align-items: center; font-size: 13px; }
+  .actions a { color: var(--muted); }
+  .pill {
+    padding: 3px 9px; border-radius: 999px; font-size: 11.5px;
+    background: var(--panel-2); color: var(--muted); border: 1px solid var(--border);
+  }
+  .pill.ok { color: var(--ok); border-color: rgba(74,222,128,.3); }
+  .pill.warn { color: #fbbf24; border-color: rgba(251,191,36,.3); }
+
+  /* ---------- layout ---------- */
+  main {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    height: calc(100vh - 60px);
+    overflow: hidden;
+  }
+  @media (max-width: 800px) {
+    main { grid-template-columns: 1fr; }
+    aside { display: none; }
+  }
+
+  aside {
+    border-right: 1px solid var(--border);
+    background: var(--panel);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .pad { padding: 16px 18px; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 10px; }
+
+  /* ---------- drop zone ---------- */
+  .drop {
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    color: var(--muted);
+    cursor: pointer;
+    transition: .15s;
+    background: var(--panel-2);
+  }
+  .drop:hover, .drop.dragover {
+    border-color: var(--accent);
+    color: var(--text);
+    background: rgba(124,92,255,.08);
+  }
+  .drop strong { display: block; color: var(--text); margin-bottom: 4px; }
+  .drop small { font-size: 11.5px; }
+  input[type=file] { display: none; }
+
+  /* ---------- file list ---------- */
+  .files {
+    flex: 1; overflow-y: auto;
+    padding: 0 18px 18px;
+  }
+  .file {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; margin-top: 8px;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .file .icon { font-size: 18px; }
+  .file .meta { flex: 1; min-width: 0; }
+  .file .name {
+    font-size: 13px; font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .file .info { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .file .status { font-size: 11px; }
+  .spinner {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- chat ---------- */
+  section.chat {
+    display: flex; flex-direction: column;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .messages {
+    flex: 1; overflow-y: auto; padding: 28px 12vw;
+  }
+  @media (max-width: 1100px) { .messages { padding: 28px 5vw; } }
+
+  .empty {
+    text-align: center; color: var(--muted); margin-top: 18vh;
+  }
+  .empty h2 { font-size: 22px; color: var(--text); margin: 0 0 10px; font-weight: 600; }
+  .empty .examples {
+    margin-top: 26px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px; max-width: 720px; margin-left: auto; margin-right: auto;
+  }
+  .example {
+    padding: 14px; border: 1px solid var(--border); border-radius: 12px;
+    background: var(--panel); cursor: pointer; text-align: left;
+    transition: .15s; font-size: 13.5px;
+  }
+  .example:hover { border-color: var(--accent); transform: translateY(-1px); }
+
+  .msg { margin-bottom: 22px; }
+  .msg .role {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1.4px;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .msg.user .role { color: var(--accent); }
+  .bubble {
+    padding: 14px 18px; border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--assistant);
+    overflow-wrap: anywhere;
+  }
+  .msg.user .bubble { background: var(--user); }
+  .bubble p:first-child { margin-top: 0; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble pre {
+    background: #0a0c11; border: 1px solid var(--border);
+    padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12.5px;
+  }
+  .bubble code { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  .bubble :not(pre) > code { background: rgba(255,255,255,.08); padding: 1px 6px; border-radius: 4px; font-size: 12.5px; }
+
+  .citations {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+  }
+  .cite {
+    font-size: 11.5px; padding: 3px 9px; border-radius: 999px;
+    background: rgba(45,212,191,.1); color: var(--accent-2);
+    border: 1px solid rgba(45,212,191,.3);
+    cursor: pointer;
+  }
+  .cite:hover { background: rgba(45,212,191,.18); }
+
+  .meta-line {
+    font-size: 11px; color: var(--muted); margin-top: 6px;
+  }
+
+  /* ---------- composer ---------- */
+  .composer {
+    border-top: 1px solid var(--border);
+    padding: 14px 12vw; background: var(--panel);
+  }
+  @media (max-width: 1100px) { .composer { padding: 14px 5vw; } }
+  .input-wrap {
+    display: flex; gap: 10px; align-items: flex-end;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px 12px;
+  }
+  .input-wrap:focus-within { border-color: var(--accent); }
+  textarea {
+    flex: 1; resize: none; max-height: 160px;
+    background: transparent; border: 0; outline: 0;
+    color: var(--text); font: inherit; padding: 6px 4px;
+  }
+  button.send {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border: 0; color: #0a0c11; font-weight: 700;
+    padding: 8px 14px; border-radius: 10px; cursor: pointer;
+    font-size: 13px;
+  }
+  button.send:disabled { opacity: .5; cursor: not-allowed; }
+  .hint {
+    font-size: 11px; color: var(--muted); margin-top: 8px; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">🧠</div>
+    <div>
+      <h1>MosaicMind</h1>
+      <div class="sub">Multimodal RAG · Gemini 3.x · LangGraph · LlamaIndex</div>
+    </div>
+  </div>
+  <div class="actions">
+    <span id="health-pill" class="pill">checking…</span>
+    <a href="/docs" target="_blank">API</a>
+    <a href="https://github.com/Aawegg/mosaicmind-rag" target="_blank">GitHub</a>
+  </div>
+</header>
+
+<main>
+  <aside>
+    <div class="pad">
+      <div class="label">Sources</div>
+      <label class="drop" id="drop">
+        <strong>Drop files or click</strong>
+        <small>PDF · image · audio · video</small>
+        <input type="file" id="fileinput" multiple
+               accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.mp3,.wav,.m4a,.flac,.ogg,.mp4,.mov,.mkv,.webm" />
+      </label>
+    </div>
+    <div class="files" id="files"></div>
+  </aside>
+
+  <section class="chat">
+    <div class="messages" id="messages">
+      <div class="empty" id="empty">
+        <h2>Ask anything about your sources</h2>
+        <div style="color: var(--muted); font-size: 13.5px;">
+          Upload PDFs, images, audio, or video on the left, then ask a question below.
+        </div>
+        <div class="examples">
+          <div class="example">Summarize the most important points across all uploaded docs.</div>
+          <div class="example">What charts or diagrams are in the materials?</div>
+          <div class="example">Quote any numbers and where they came from.</div>
+          <div class="example">Compare the conclusions of the two longest documents.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="input-wrap">
+        <textarea id="q" rows="1" placeholder="Ask MosaicMind…"></textarea>
+        <button class="send" id="send">Send ↑</button>
+      </div>
+      <div class="hint">Enter to send · Shift+Enter for newline</div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const messages = $("#messages");
+const empty = $("#empty");
+const filesEl = $("#files");
+const drop = $("#drop");
+const fileinput = $("#fileinput");
+const ta = $("#q");
+const sendBtn = $("#send");
+const healthPill = $("#health-pill");
+
+const md = window.marked;
+md.setOptions({ breaks: true, gfm: true });
+const sanitize = (html) => DOMPurify.sanitize(html);
+
+const ICONS = {
+  pdf: "📄", image: "🖼️", audio: "🎵", video: "🎬"
+};
+function kindFromName(name) {
+  const ext = name.toLowerCase().split(".").pop();
+  if (ext === "pdf") return "pdf";
+  if (["png","jpg","jpeg","webp","gif","bmp","tiff"].includes(ext)) return "image";
+  if (["mp3","wav","m4a","flac","ogg","aac"].includes(ext)) return "audio";
+  return "video";
+}
+
+// ---------- health ----------
+async function checkHealth() {
+  try {
+    const r = await fetch("/healthz");
+    const j = await r.json();
+    healthPill.textContent = `live · ${j.heavy_model}`;
+    healthPill.className = "pill ok";
+  } catch (e) {
+    healthPill.textContent = "offline";
+    healthPill.className = "pill warn";
+  }
+}
+checkHealth();
+
+// ---------- example clicks ----------
+document.querySelectorAll(".example").forEach((el) => {
+  el.addEventListener("click", () => {
+    ta.value = el.textContent.trim();
+    ta.focus();
+  });
+});
+
+// ---------- drop zone ----------
+["dragover", "dragenter"].forEach((ev) =>
+  drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("dragover"); })
+);
+["dragleave", "drop"].forEach((ev) =>
+  drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("dragover"); })
+);
+drop.addEventListener("drop", (e) => {
+  if (e.dataTransfer?.files) handleFiles(e.dataTransfer.files);
+});
+fileinput.addEventListener("change", (e) => handleFiles(e.target.files));
+
+async function handleFiles(fileList) {
+  for (const f of Array.from(fileList)) {
+    const kind = kindFromName(f.name);
+    const row = document.createElement("div");
+    row.className = "file";
+    row.innerHTML = `
+      <div class="icon">${ICONS[kind]}</div>
+      <div class="meta">
+        <div class="name">${f.name}</div>
+        <div class="info">${kind} · ${(f.size/1024/1024).toFixed(2)} MB · uploading…</div>
+      </div>
+      <div class="status"><div class="spinner"></div></div>
+    `;
+    filesEl.prepend(row);
+    try {
+      const fd = new FormData();
+      fd.append("file", f);
+      const r = await fetch("/ingest", { method: "POST", body: fd });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      row.querySelector(".info").textContent =
+        `${j.kind} · ${j.text_nodes} text + ${j.image_nodes} image chunks`;
+      row.querySelector(".status").innerHTML = `<span style="color:var(--ok)">✓</span>`;
+    } catch (err) {
+      row.querySelector(".info").textContent = `failed: ${err.message}`;
+      row.querySelector(".status").innerHTML = `<span style="color:var(--danger)">✗</span>`;
+    }
+  }
+}
+
+// ---------- chat ----------
+function addMessage(role, content) {
+  if (empty) empty.remove();
+  const wrap = document.createElement("div");
+  wrap.className = `msg ${role}`;
+  wrap.innerHTML = `
+    <div class="role">${role === "user" ? "You" : "MosaicMind"}</div>
+    <div class="bubble"></div>
+  `;
+  wrap.querySelector(".bubble").innerHTML =
+    role === "user"
+      ? `<p>${escapeHtml(content)}</p>`
+      : sanitize(md.parse(content));
+  messages.appendChild(wrap);
+  messages.scrollTop = messages.scrollHeight;
+  return wrap;
+}
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+async function ask() {
+  const question = ta.value.trim();
+  if (!question) return;
+  ta.value = "";
+  ta.style.height = "auto";
+
+  addMessage("user", question);
+  const a = addMessage("assistant", "_thinking…_");
+  const bubble = a.querySelector(".bubble");
+  sendBtn.disabled = true;
+
+  try {
+    const t0 = performance.now();
+    const r = await fetch("/query", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
+    const j = await r.json();
+    const ms = Math.round(performance.now() - t0);
+
+    const answerHtml = sanitize(md.parse(j.answer || "(empty answer)"));
+    let citesHtml = "";
+    if (j.citations?.length) {
+      citesHtml = `<div class="citations">${
+        j.citations.map((c) => {
+          const loc = c.page ? `p.${c.page}` : c.timestamp_s != null ? `${c.timestamp_s}s` : c.modality;
+          return `<span class="cite" title="score=${c.score?.toFixed?.(3) ?? "—"} · ${c.modality}">[${c.n}] ${escapeHtml(c.source_name)} · ${loc}</span>`;
+        }).join("")
+      }</div>`;
+    }
+    bubble.innerHTML = answerHtml + citesHtml +
+      `<div class="meta-line">${j.citations?.length || 0} sources · ${ms} ms</div>`;
+  } catch (err) {
+    bubble.innerHTML = `<span style="color:var(--danger)">Error: ${escapeHtml(err.message)}</span>`;
+  } finally {
+    sendBtn.disabled = false;
+    messages.scrollTop = messages.scrollHeight;
+  }
+}
+
+sendBtn.addEventListener("click", ask);
+ta.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    ask();
+  }
+});
+ta.addEventListener("input", () => {
+  ta.style.height = "auto";
+  ta.style.height = Math.min(ta.scrollHeight, 160) + "px";
+});
+</script>
+</body>
+</html>
