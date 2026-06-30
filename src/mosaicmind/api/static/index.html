@@ -3,34 +3,34 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MosaicMind — Multimodal RAG</title>
+<title>MosaicMind · Multimodal RAG</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
 <style>
   :root {
-    --bg-0: #07080c;
-    --bg-1: #0c0e15;
-    --bg-2: #11141d;
-    --bg-3: #161a26;
-    --border: #20253349;
-    --border-strong: #262c3c;
-    --text: #e8eaf2;
-    --muted: #7b839c;
-    --muted-2: #525a72;
-    --accent: #8b5cf6;
-    --accent-2: #06b6d4;
-    --accent-3: #f0abfc;
-    --user-bg: #1a2138;
-    --assistant-bg: #11141d;
-    --danger: #f87171;
-    --ok: #34d399;
-    --warn: #fbbf24;
-    --grad: linear-gradient(135deg, var(--accent), var(--accent-2));
-    --grad-soft: linear-gradient(135deg, rgba(139,92,246,.18), rgba(6,182,212,.10));
+    --bg-0: #FBEFDD;          /* warm paper canvas */
+    --bg-1: #FFF7EC;          /* panels, composer */
+    --bg-2: #FFFCF5;          /* inputs, file cards, hovers */
+    --bg-3: #F3E7D2;          /* active item, pills, spinner track */
+    --border: #211e1a22;      /* hairline */
+    --border-strong: #211e1a; /* solid ink (neo-brutalist) */
+    --text: #211e1a;
+    --muted: #6b6356;
+    --muted-2: #9a8f7d;
+    --accent: #FF5A47;        /* coral */
+    --accent-2: #3B6FF5;      /* blue */
+    --accent-3: #D63A2A;      /* deep coral */
+    --user-bg: #FFE4DF;       /* coral tint */
+    --assistant-bg: #FFFFFF;
+    --danger: #E5484D;
+    --ok: #2FAE66;
+    --warn: #C77700;
+    --grad: linear-gradient(135deg, #FF5A47, #FFB22C);
+    --grad-soft: linear-gradient(135deg, rgba(255,90,71,.14), rgba(255,178,44,.10));
   }
   * { box-sizing: border-box; }
   html, body {
@@ -383,6 +383,55 @@
   .toast.ok { border-color: rgba(52,211,153,.4); }
   .toast.err { border-color: rgba(248,113,113,.4); }
   @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* =========================================================
+     Warm reskin layer: kills the AI-purple/gradient-text slop,
+     swaps in brand fonts + chunky neo-brutalist accents.
+     ========================================================= */
+  body { font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif; }
+  body::before {
+    background:
+      radial-gradient(900px 520px at 12% -10%, rgba(255,90,71,.12), transparent 60%),
+      radial-gradient(820px 520px at 95% 110%, rgba(59,111,245,.10), transparent 60%);
+  }
+  header { background: rgba(251,239,221,.72); border-bottom: 2px solid var(--border-strong); }
+  .brand .logo { box-shadow: 3px 3px 0 var(--border-strong); border-radius: 11px; }
+  .brand h1 {
+    font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; letter-spacing: -.4px;
+    background: none; -webkit-background-clip: border-box; background-clip: border-box; color: var(--text);
+  }
+  .brand .sub { font-family: "Space Mono", monospace; font-size: 11px; }
+  .panel-head h2 { font-family: "Space Mono", monospace; }
+  .pill { font-family: "Space Mono", monospace; }
+
+  .new-chat-btn { background: var(--accent); color: var(--text); border: 2px solid var(--border-strong); box-shadow: 3px 3px 0 var(--border-strong); font-weight: 700; }
+  .new-chat-btn:hover { background: #ff7060; color: var(--text); transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--border-strong); }
+  .chat-item.active { box-shadow: 2px 2px 0 var(--border-strong); }
+  .file { box-shadow: 2px 2px 0 var(--border-strong); }
+  .drop { border-width: 2px; }
+
+  .empty-logo { box-shadow: 4px 4px 0 var(--border-strong); border-radius: 16px; }
+  .empty h2 { font-family: "Bricolage Grotesque", sans-serif; }
+  .example { box-shadow: 3px 3px 0 var(--border-strong); }
+  .example:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--border-strong); }
+
+  .msg .role { font-family: "Space Mono", monospace; }
+  .role-dot, .msg.assistant .role-dot { box-shadow: none; }
+  .bubble { box-shadow: 2px 2px 0 var(--border-strong); }
+  .msg.user .bubble { border-color: var(--border-strong); }
+  .bubble pre { background: #2b2620; border-color: #2b2620; color: #f3ead9; font-family: "Space Mono", monospace; }
+  .bubble :not(pre) > code { background: rgba(255,90,71,.14); color: var(--accent-3); font-family: "Space Mono", monospace; }
+
+  .cite { background: rgba(59,111,245,.10); color: var(--accent-2); border: 1px solid rgba(59,111,245,.30); font-family: "Space Mono", monospace; }
+  .cite:hover { background: rgba(59,111,245,.18); }
+  .meta-line { font-family: "Space Mono", monospace; }
+
+  .input-wrap { border: 2px solid var(--border-strong); }
+  .input-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(255,90,71,.16); }
+  button.send { color: var(--text); border: 2px solid var(--border-strong); box-shadow: 2px 2px 0 var(--border-strong); font-weight: 700; }
+  button.send:hover:not(:disabled) { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--border-strong); }
+  .hint { font-family: "Space Mono", monospace; }
+  .toast { box-shadow: 4px 4px 0 var(--border-strong); }
 </style>
 </head>
 <body>
@@ -461,7 +510,7 @@
 
 <script>
 /* =====================================================================
-   MosaicMind chat UI — single page, vanilla JS.
+   MosaicMind chat UI - single page, vanilla JS.
    Features: streaming SSE, multi-conversation localStorage, clear corpus.
 ===================================================================== */
 
@@ -609,7 +658,7 @@ function citationsEl(cs) {
   d.className = "citations";
   d.innerHTML = cs.map((c) => {
     const loc = c.page ? `p.${c.page}` : c.timestamp_s != null ? `${c.timestamp_s}s` : (c.modality || "");
-    return `<span class="cite" title="score=${c.score?.toFixed?.(3) ?? "—"} · ${c.modality || ""}">[${c.n}] ${escapeHtml(c.source_name)} · ${loc}</span>`;
+    return `<span class="cite" title="score=${c.score?.toFixed?.(3) ?? "n/a"} · ${c.modality || ""}">[${c.n}] ${escapeHtml(c.source_name)} · ${loc}</span>`;
   }).join("");
   return d;
 }
