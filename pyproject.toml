@@ -74,6 +74,12 @@ airflow = [
 aws = [
   "boto3>=1.35,<2.0",
 ]
+vertex = [
+  # Routes the LangGraph chat nodes through GCP Vertex AI when
+  # GOOGLE_GENAI_USE_VERTEXAI=true. google-genai and llama-index already
+  # support Vertex natively; this adds the LangChain Vertex binding.
+  "langchain-google-vertexai>=2.0,<3.0",
+]
 
 [project.scripts]
 mosaicmind = "mosaicmind.api.main:run"

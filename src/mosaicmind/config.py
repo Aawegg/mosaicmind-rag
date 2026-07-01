@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     )
     groq_api_key: str = Field(default="", validation_alias="GROQ_API_KEY")
 
+    # --- Vertex AI backend (optional) ---
+    # When enabled, Gemini calls route through GCP Vertex AI (ADC auth,
+    # project + region) instead of the Gemini Developer API key.
+    use_vertexai: bool = Field(default=False, validation_alias="GOOGLE_GENAI_USE_VERTEXAI")
+    gcp_project: str = Field(default="", validation_alias="GOOGLE_CLOUD_PROJECT")
+    gcp_location: str = Field(default="us-central1", validation_alias="GOOGLE_CLOUD_LOCATION")
+
     # --- Model routing ---
     heavy_model: str = Field(default="gemini-3.1-pro-preview", validation_alias="MOSAIC_HEAVY_MODEL")
     fast_model: str = Field(default="gemini-3.1-flash-lite", validation_alias="MOSAIC_FAST_MODEL")
