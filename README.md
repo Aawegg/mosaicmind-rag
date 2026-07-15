@@ -17,7 +17,7 @@ short_description: Multimodal RAG on Gemini 3.x + LangGraph + LlamaIndex
 [![ci](https://github.com/Aawegg/mosaicmind-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/Aawegg/mosaicmind-rag/actions/workflows/ci.yml)
 [![hf-space](https://img.shields.io/badge/%F0%9F%A4%97%20Space-Aawegg%2Fmosaicmind-yellow)](https://huggingface.co/spaces/Aawegg/mosaicmind)
 
-> **Live demo:** https://huggingface.co/spaces/Aawegg/mosaicmind _(URL active after `bash scripts/deploy_hf_space.sh`; see [DEPLOY.md](./DEPLOY.md))._
+> **Live demo:** https://huggingface.co/spaces/Aaweg/mosaicmind · direct app: https://aaweg-mosaicmind.hf.space
 
 ---
 
